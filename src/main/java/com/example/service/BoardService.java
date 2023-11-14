@@ -70,111 +70,79 @@ public class BoardService {
                 .map(board -> new BoardDto(board.getId(), board.getCategory().getId(), user.getId(), new ArrayList<>()))
                 .collect(Collectors.toList());
     }
-//        List<Board> boards = new ArrayList<>();
-//        for (Long categoryId : categoryIds) {
-//            Category category = categoryRepository.findById(categoryId)
-//                    .orElseThrow(() -> new IllegalArgumentException("Invalid category ID"));
-//
-//            Board board = new Board();
-//            board.setUser(user);
-//            board.setCategory(category);
-//            boards.add(boardRepository.save(board)); // 바로 저장
-//        }
-//
-//        // 변환된 BoardDto 리스트 반환
-//        return boards.stream()
-//                .map(board -> new BoardDto(board.getId(), board.getCategory().getId(), user.getId(), new ArrayList<>()))
-//                .collect(Collectors.toList());
-//    }
+        public List<CategoryDto> getMyCategories(String userId) {
+            UsersEntity user = usersRepository.findByUserId(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            Long user_id = user.getId();
 
-//    @Transactional
-//    public List<BoardDto> saveUserCategories(Long userId, List<Long> categoryIds) {
-//        UsersEntity user = usersRepository.findById(userId)
-//                .orElseThrow(() -> new IllegalArgumentException("Invalid user ID"));
-//
-//        List<Board> boards = new ArrayList<>();
-//        for (Long categoryId : categoryIds) {
-//            Category category = categoryRepository.findById(categoryId)
-//                    .orElseThrow(() -> new IllegalArgumentException("Invalid category ID"));
-//
-//            Board board = new Board();
-//            board.setUser(user);
-//            board.setCategory(category);
-//            boards.add(boardRepository.save(board)); // 바로 저장
-//        }
-//
-//        // 변환된 BoardDto 리스트 반환
-//        return boards.stream()
-//                .map(board -> new BoardDto(board.getId(), board.getCategory().getId(), user.getId()))
+            List<Board> boards = boardRepository.findAllByUserId(user_id);
+            return boards.stream()
+                    .map(board -> new CategoryDto(
+                            board.getCategory().getId(),
+                            board.getCategory().getCategoryName()
+                    )).distinct().collect(Collectors.toList());
+
+        }
+//    private List<SkinDto> convertToSkinDtoList(List<Skin> skins) {
+//        return skins.stream()
+//                .map(skin -> new SkinDto(skin.getId(), skin.getSkinImg(), skin.getBoard().getId()))
 //                .collect(Collectors.toList());
 //    }
 
 
-//    public List<BoardDto> getMyCategories(Long userId) {
-//        List<Board> boards = boardRepository.findAllByUserId(userId);
-//        return boards.stream()
-//                .map(board -> new BoardDto(board.getId(), board.getCategory().getId(), userId))
-//                .collect(Collectors.toList());
+//    public SkinDto getSkinOfBoard(Long userId) {
+//        Board board = boardRepository.findFirstByUserId(userId)
+//                .orElseThrow(() -> new NoSuchElementException("No board found for user: " + userId));
+//
+//        // 보드에 연결된 첫 번째 스킨을 찾습니다.
+//        Skin skin = board.getSkins().stream()
+//                .findFirst()
+//                .orElseThrow(() -> new NoSuchElementException("No skin found for board: " + board.getId()));
+//
+//        // SkinDto 객체를 생성하여 반환합니다.
+//        return new SkinDto(skin.getId(), skin.getSkinImg(), board.getId());
 //    }
-public List<BoardDto> getMyCategories(Long userId) {
-    List<Board> boards = boardRepository.findAllByUserId(userId);
-    return boards.stream()
-            .map(board -> new BoardDto(
-                    board.getId(),
-                    board.getCategory().getId(),
-                    userId,
-                    convertToSkinDtoList(board.getSkins())))
-            .collect(Collectors.toList());
-}
-    private List<SkinDto> convertToSkinDtoList(List<Skin> skins) {
-        return skins.stream()
-                .map(skin -> new SkinDto(skin.getId(), skin.getSkinImg(), skin.getBoard().getId()))
+    public PostItDto savePostIt(String userId, PostItForm postItForm) throws Exception {
+        UsersEntity user = usersRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid user ID"));
+        Long user_id = user.getId();
+
+        String uploadPath= env.getProperty("itemImgLocation");
+
+        List<Board> boards = boardRepository.findAllByUserId(user_id);
+
+        List<Long> categoryIds = boards.stream()
+                .map(Board::getCategory)
+                .map(Category::getId)
+                .distinct()
+                .limit(4)
                 .collect(Collectors.toList());
+
+        for(Long categoryId : categoryIds) {
+            String savedFileName = uploadFile(uploadPath, postItForm.getPicture().getOriginalFilename(), postItForm.getPicture().getBytes());
+
+            PostIt postIt = new PostIt();
+            postIt.setBoard(boards.stream().filter(b -> b.getCategory().getId().equals(categoryId)).findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid category ID")));
+            postIt.setContents(postItForm.getContents());
+            postIt.setPicture(savedFileName);
+
+            postItRepository.save(postIt);
+        }
+        PostIt lastSavePostIt = postItRepository.findTopByOrderByIdDesc()
+                .orElseThrow(() -> new IllegalStateException("Failed to save post-it"));
+
+        return new PostItDto(lastSavePostIt.getId(), lastSavePostIt.getBoard().getId(), postItForm.getContents(), lastSavePostIt.getPicture());
     }
-//    @Transactional
-//    public void deleteUserCategories(Long userId, List<Long> categoryIds) {
-//        List<Board> boards = boardRepository.findAllByUserIdAndCategoryIdIn(userId, categoryIds);
-//        boardRepository.deleteAll(boards);
-//    }
-
-    public SkinDto getSkinOfBoard(Long userId) {
-        Board board = boardRepository.findFirstByUserId(userId)
-                .orElseThrow(() -> new NoSuchElementException("No board found for user: " + userId));
-
-        // 보드에 연결된 첫 번째 스킨을 찾습니다.
-        Skin skin = board.getSkins().stream()
-                .findFirst()
-                .orElseThrow(() -> new NoSuchElementException("No skin found for board: " + board.getId()));
-
-        // SkinDto 객체를 생성하여 반환합니다.
-        return new SkinDto(skin.getId(), skin.getSkinImg(), board.getId());
-    }
-    public PostItDto savePostIt(Long userId, Long boardId, String contents, MultipartFile pictureFile) throws Exception {
-        String uploadPath = env.getProperty("itemImgLocation");
-        String savedFileName = uploadFile(uploadPath, pictureFile.getOriginalFilename(), pictureFile.getBytes());
-
-        Board board = boardRepository.findById(boardId)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid board ID"));
-
-        PostIt postIt = new PostIt();
-        postIt.setBoard(board);
-        postIt.setContents(contents);
-        postIt.setPicture(savedFileName);
-        postIt = postItRepository.save(postIt);
-
-        return new PostItDto(postIt.getId(), boardId, contents, savedFileName);
-    }
-
-    public String uploadFile(String uploadPath, String originalFileName, byte[] fileDate) throws Exception {
+    private String uploadFile(String uploadPath, String originalFileName, byte[] fileData) throws Exception  {
         UUID uuid = UUID.randomUUID();
         String extension = originalFileName.substring(originalFileName.lastIndexOf("."));
         String savedFileName = uuid.toString() + extension;
         String fileUploadFullUrl = uploadPath + savedFileName;
 
-        FileOutputStream fos = new FileOutputStream(fileUploadFullUrl);
-        fos.write(fileDate);
-        fos.close();
-
+        try(FileOutputStream fos = new FileOutputStream(fileUploadFullUrl)) {
+            fos.write(fileData);
+        }
         return savedFileName;
     }
 

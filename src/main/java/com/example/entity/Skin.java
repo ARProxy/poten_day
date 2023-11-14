@@ -17,10 +17,11 @@ public class Skin {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "skin_img")
-    private String skinImg;
-
     @ManyToOne
     @JoinColumn(name = "board_id", nullable = false)
     private Board board;
+
+    @OneToOne
+    @JoinColumn(name = "skinImg_id", nullable = false)
+    private SkinImg skinImg;
 }

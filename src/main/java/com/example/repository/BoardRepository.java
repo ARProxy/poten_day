@@ -9,7 +9,7 @@ import java.util.Optional;
 
 public interface BoardRepository extends JpaRepository<Board, Long> {
 
-    List<Board> findAllByUserId(Long userId);
+    List<Board> findAllByUserId(Long user_id);
     List<Board> findAllByUserIdAndCategoryIdIn(Long userId, List<Long> categoryIds);
 
     Optional<Board> findFirstByUserId(Long userId);
