@@ -2,16 +2,15 @@ package com.example.service;
 
 import com.example.dto.*;
 import com.example.entity.*;
-import com.example.repository.BoardRepository;
-import com.example.repository.CategoryRepository;
-import com.example.repository.PostItRepository;
-import com.example.repository.UsersRepository;
+import com.example.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.persistence.Entity;
+import javax.persistence.EntityNotFoundException;
 import java.io.FileOutputStream;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,6 +23,8 @@ public class BoardService {
     private final BoardRepository boardRepository;
     private final UsersRepository usersRepository;
     private final PostItRepository postItRepository;
+    private final SkinImgRepository skinImgRepository;
+    private final SkinRepository skinRepository;
     private final Environment env;
     public List<CategoryDto> getCategories() {
         List<Category> categories = categoryRepository.findAll();
@@ -70,38 +71,36 @@ public class BoardService {
                 .map(board -> new BoardDto(board.getId(), board.getCategory().getId(), user.getId(), new ArrayList<>()))
                 .collect(Collectors.toList());
     }
-        public List<CategoryDto> getMyCategories(String userId) {
-            UsersEntity user = usersRepository.findByUserId(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            Long user_id = user.getId();
+    public List<CategoryDto> getMyCategories(String userId) {
+        UsersEntity user = usersRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Long user_id = user.getId();
 
-            List<Board> boards = boardRepository.findAllByUserId(user_id);
-            return boards.stream()
-                    .map(board -> new CategoryDto(
-                            board.getCategory().getId(),
-                            board.getCategory().getCategoryName()
-                    )).distinct().collect(Collectors.toList());
+        List<Board> boards = boardRepository.findAllByUserId(user_id);
+        return boards.stream()
+                .map(board -> new CategoryDto(
+                        board.getCategory().getId(),
+                        board.getCategory().getCategoryName()
+                )).distinct().collect(Collectors.toList());
 
-        }
-//    private List<SkinDto> convertToSkinDtoList(List<Skin> skins) {
-//        return skins.stream()
-//                .map(skin -> new SkinDto(skin.getId(), skin.getSkinImg(), skin.getBoard().getId()))
-//                .collect(Collectors.toList());
-//    }
+    }
+    public Skin saveMySkin(String userId, Long skinImgId) {
+        UsersEntity user = usersRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Long user_id = user.getId();
 
+        Board board = boardRepository.findFirstByUserId(user_id)
+                .orElseThrow(()->new EntityNotFoundException("Board not found"));
 
-//    public SkinDto getSkinOfBoard(Long userId) {
-//        Board board = boardRepository.findFirstByUserId(userId)
-//                .orElseThrow(() -> new NoSuchElementException("No board found for user: " + userId));
-//
-//        // 보드에 연결된 첫 번째 스킨을 찾습니다.
-//        Skin skin = board.getSkins().stream()
-//                .findFirst()
-//                .orElseThrow(() -> new NoSuchElementException("No skin found for board: " + board.getId()));
-//
-//        // SkinDto 객체를 생성하여 반환합니다.
-//        return new SkinDto(skin.getId(), skin.getSkinImg(), board.getId());
-//    }
+        SkinImg skinImg = skinImgRepository.findById(skinImgId)
+                .orElseThrow(() -> new EntityNotFoundException("skin image not found")  );
+
+        Skin newSkin = new Skin();
+        newSkin.setBoard(board);
+        newSkin.setSkinImg(skinImg);
+
+        return skinRepository.save(newSkin);
+    }
     public PostItDto savePostIt(String userId, PostItForm postItForm) throws Exception {
         UsersEntity user = usersRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid user ID"));

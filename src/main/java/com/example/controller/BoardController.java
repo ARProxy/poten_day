@@ -2,6 +2,7 @@ package com.example.controller;
 
 import com.example.dto.*;
 import com.example.entity.Skin;
+import com.example.entity.SkinImg;
 import com.example.jwt.TokenUtils;
 import com.example.service.BoardService;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,13 @@ public class BoardController {
         String userId = tokenUtils.getUserIdFromToken(actualToken);
         List<CategoryDto> myCategory = boardService.getMyCategories(userId);
         return ResponseEntity.ok(myCategory);
+    }
+    @GetMapping("/selectSkin")
+    public ResponseEntity<?> saveMySkin(@RequestHeader("Authorization") String token, @RequestParam Long skinImgId) {
+        String actualToken = token.substring(7);
+        String userId = tokenUtils.getUserIdFromToken(actualToken);
+        boardService.saveMySkin(userId, skinImgId);
+        return ResponseEntity.ok().build();
     }
     @PostMapping("/savePostIt")
     public ResponseEntity<PostItDto> savePostIt(@RequestHeader("Authorization") String token, @ModelAttribute PostItForm postItForm) throws Exception {

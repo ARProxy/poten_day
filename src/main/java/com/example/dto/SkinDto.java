@@ -7,12 +7,12 @@ import lombok.Getter;
 public class SkinDto {
 
     private Long id;
-    private String skinImg;
+    private Long skinImg_id;
     private Long boardId;
 
-    public SkinDto(Long id, String skinImg, Long boardId) {
+    public SkinDto(Long id, Long skinImg_id, Long boardId) {
         this.id = id;
-        this.skinImg = skinImg;
+        this.skinImg_id = skinImg_id;
         this.boardId = boardId;
     }
 }

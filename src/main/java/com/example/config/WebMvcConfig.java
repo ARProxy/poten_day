@@ -24,7 +24,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/api/board/category")
                 .excludePathPatterns("/api/board/saveMyCategories")
                 .excludePathPatterns("/api/board/myCategories")
-                .excludePathPatterns("/api/board/deleteCategories")
+                .excludePathPatterns("/api/board/selectSkin")
                 .excludePathPatterns("/api/board/skin")
                 .excludePathPatterns("/api/board/savePostIt");
     }
